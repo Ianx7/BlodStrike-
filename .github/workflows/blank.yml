@@ -1,34 +1,12 @@
-name: Build iOS Dylib
+ARCHS = arm64
+TARGET := iphone:clang:latest:14.0
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+include $(THEOS)/makefiles/common.mk
 
-jobs:
-  build:
-    runs-on: macos-latest
+TWEAK_NAME = ianSakPanel
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+ianSakPanel_FILES = Tweak.xm
+ianSakPanel_CFLAGS = -fobjc-arc
+ianSakPanel_FRAMEWORKS = UIKit WebKit CoreGraphics
 
-    - name: Setup Theos
-      run: |
-        git clone --recursive https://github.com $HOME/theos
-        curl -LO https://github.com
-        unzip master.zip
-        mkdir -p $HOME/theos/sdks
-        mv sdks-master/*.sdk $HOME/theos/sdks/
-
-    - name: Compile Dylib
-      env:
-        THEOS: ${{ env.HOME }}/theos
-      run: |
-        make package FINALPACKAGE=1
-
-    - name: Upload Dylib Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ianSakPanel-dylib
-        path: .theos/obj/debug/*.dylib
+include $(THEOS_MAKE_PATH)/tweak.mk

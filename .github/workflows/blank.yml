@@ -1,12 +1,60 @@
-ARCHS = arm64
-TARGET := iphone:clang:latest:14.0
+name: Build iOS Dylib
 
-include $(THEOS)/makefiles/common.mk
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-TWEAK_NAME = ianSakPanel
+jobs:
+  build:
+    runs-on: macos-latest
 
-ianSakPanel_FILES = Tweak.xm
-ianSakPanel_CFLAGS = -fobjc-arc
-ianSakPanel_FRAMEWORKS = UIKit WebKit CoreGraphics
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-include $(THEOS_MAKE_PATH)/tweak.mk
+    - name: Setup Theos
+      run: |
+        git clone --recursive https://github.com $HOME/theos
+        curl -LO https://github.com
+        unzip -q master.zip
+        mkdir -p $HOME/theos/sdks
+        mv sdks-master/*.sdk $HOME/theos/sdks/
+
+    - name: Create Makefile and Control
+      run: |
+        cat << 'EOF' > Makefile
+        ARCHS = arm64
+        TARGET := iphone:clang:latest:14.0
+        include $(THEOS)/makefiles/common.mk
+
+        TWEAK_NAME = ianSakPanel
+        ianSakPanel_FILES = Tweak.xm
+        ianSakPanel_CFLAGS = -fobjc-arc
+        ianSakPanel_FRAMEWORKS = UIKit WebKit CoreGraphics
+
+        include $(THEOS_MAKE_PATH)/tweak.mk
+        EOF
+
+        cat << 'EOF' > control
+        Package: com.iansak.panel
+        Name: ianSakPanel
+        Version: 3.0.0
+        Architecture: iphoneos-arm64
+        Description: Panel flotante para Blood Strike
+        Maintainer: ianSak
+        Author: ianSak
+        Section: Tweaks
+        EOF
+
+    - name: Compile Dylib
+      env:
+        THEOS: ${{ env.HOME }}/theos
+      run: |
+        make FINALPACKAGE=1
+
+    - name: Upload Dylib Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ianSakPanel-dylib
+        path: .theos/obj/*.dylib
